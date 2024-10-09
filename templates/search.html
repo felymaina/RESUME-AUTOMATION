@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <title>Search Resumes</title>
+</head>
+<body>
+    <h1>Search for Resumes</h1>
+    <form action="/search" method="POST">
+        <label for="description">Job Description:</label>
+        <input type="text" name="description" id="description" required>
+        <input type="submit" value="Search">
+    </form>
+</body>
+</html>

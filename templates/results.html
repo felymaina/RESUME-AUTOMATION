@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Search Results</title>
+</head>
+<body>
+    <h1>Matched Resumes</h1>
+    <ul>
+        {% for resume in resumes %}
+        <li><a href="{{ url_for('download_file', filename=resume[0]) }}">{{ resume[0] }}</a></li>
+        {% endfor %}
+    </ul>
+    <a href="/">Go Back</a>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <title>Search Results</title>
+</head>
+<body>
+    <h1>Matched Resumes</h1>
+    <ul>
+        {% for resume in resumes %}
+        <li><a href="{{ url_for('download_file', filename=resume[0]) }}">{{ resume[0] }}</a></li>
+        {% endfor %}
+    </ul>
+    <a href="/">Go Back</a>
+</body>
+</html>
