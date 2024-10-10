@@ -1,93 +1,82 @@
-from flask import Flask, request, render_template, redirect, url_for, send_from_directory
+from flask import Flask, request, render_template, redirect, url_for, send_from_directory, jsonify
 import os
 import sqlite3
 from werkzeug.utils import secure_filename
-import PyPDF2
-import docx
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'uploads/'
-app.config['ALLOWED_EXTENSIONS'] = {'pdf', 'docx'}
 
-# Initialize database
+# SQLite database setup
+DATABASE = 'resumes.db'
+
 def init_db():
-    conn = sqlite3.connect('resumes.db')
+    conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS resumes (id INTEGER PRIMARY KEY, filename TEXT, content TEXT)''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS resumes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            filename TEXT,
+            file_data BLOB
+        )
+    ''')
     conn.commit()
     conn.close()
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+# Initialize the database
+init_db()
 
-# Upload file and store in the database
+# Allowed file extensions
+ALLOWED_EXTENSIONS = {'pdf', 'docx'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
     if request.method == 'POST':
-        file = request.files['file']
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(filepath)
-            
-            # Extract text and store in the database
-            file_content = extract_text(filepath, filename)
-            save_to_db(filename, file_content)
-            
-            return redirect(url_for('search'))
-    return render_template('upload.html')
+        # Handle file uploads
+        files = request.files.getlist('files')  # Get multiple files from the form
+        if len(files) > 10:
+            return 'You can only upload up to 10 files', 400
 
-def extract_text(filepath, filename):
-    # Extract text from PDF
-    if filename.endswith('.pdf'):
-        return extract_text_from_pdf(filepath)
-    # Extract text from DOCX
-    elif filename.endswith('.docx'):
-        return extract_text_from_docx(filepath)
+        conn = sqlite3.connect(DATABASE)
+        c = conn.cursor()
 
-def extract_text_from_pdf(filepath):
-    text = ''
-    with open(filepath, 'rb') as file:
-        reader = PyPDF2.PdfReader(file)
-        for page_num in range(len(reader.pages)):
-            text += reader.pages[page_num].extract_text()
-    return text
+        for file in files:
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                file_data = file.read()
 
-def extract_text_from_docx(filepath):
-    doc = docx.Document(filepath)
-    text = '\n'.join([para.text for para in doc.paragraphs])
-    return text
+                # Insert the file into the SQLite database
+                c.execute('INSERT INTO resumes (filename, file_data) VALUES (?, ?)', (filename, file_data))
 
-# Save the resume content in the database
-def save_to_db(filename, content):
-    conn = sqlite3.connect('resumes.db')
+        conn.commit()
+        conn.close()
+
+        return redirect(url_for('upload_file'))
+
+    # Retrieve resumes from the database
+    conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
-    c.execute("INSERT INTO resumes (filename, content) VALUES (?, ?)", (filename, content))
-    conn.commit()
+    c.execute('SELECT id, filename FROM resumes')
+    resumes = [{'id': row[0], 'filename': row[1]} for row in c.fetchall()]
     conn.close()
 
-# Search for resumes matching a description
-@app.route('/search', methods=['GET', 'POST'])
-def search():
-    if request.method == 'POST':
-        search_query = request.form['description']
-        matched_resumes = search_resumes(search_query)
-        return render_template('results.html', resumes=matched_resumes)
-    return render_template('search.html')
+    return render_template('index.html', resumes=resumes)
 
-def search_resumes(description):
-    conn = sqlite3.connect('resumes.db')
+@app.route('/resume/<int:id>')
+def get_resume(id):
+    # Retrieve the file by its ID from the database
+    conn = sqlite3.connect(DATABASE)
     c = conn.cursor()
-    c.execute("SELECT filename FROM resumes WHERE content LIKE ?", ('%' + description + '%',))
-    results = c.fetchall()
+    c.execute('SELECT filename, file_data FROM resumes WHERE id = ?', (id,))
+    resume = c.fetchone()
     conn.close()
-    return results
 
-# Download matched resume
-@app.route('/uploads/<filename>')
-def download_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    if resume:
+        filename, file_data = resume
+        return send_from_directory(directory='.', filename=filename, as_attachment=True)
+
+    return 'Resume not found', 404
 
 if __name__ == '__main__':
-    init_db()
     app.run(debug=True)

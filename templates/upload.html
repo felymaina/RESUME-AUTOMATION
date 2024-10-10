@@ -4,13 +4,55 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <title>Upload Resume</title>
+    <title>Upload Resumes</title>
 </head>
 <body>
-    <h1>Upload Resume</h1>
-    <form action="/" method="POST" enctype="multipart/form-data">
-        <input type="file" name="file" accept=".pdf,.docx" required>
-        <input type="submit" value="Upload">
-    </form>
+    <div class="container">
+        
+        <!-- Form Section -->
+        <div class="form-section">
+            <h1>Upload Resumes</h1>
+            <form action="/" method="POST" enctype="multipart/form-data">
+                <label for="file">Select up to 10 resumes</label>
+                <input type="file" id="file" name="files" accept=".pdf,.docx" multiple required>
+                <input type="submit" value="Upload">
+            </form>
+        </div>
+
+        <!-- Preview Section -->
+        <div class="preview-section">
+            <h2>Resume Preview</h2>
+            <ul id="resume-list">
+                <!-- Uploaded resume names will be displayed here -->
+            </ul>
+            <div class="preview-content">
+                <p id="preview-text">No file selected yet.</p>
+            </div>
+        </div>
+        
+    </div>
+
+    <!-- Add JavaScript to handle resume previews -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const resumeList = document.getElementById('resume-list');
+            const previewText = document.getElementById('preview-text');
+
+            // Simulate fetched resumes from the server (backend will provide real ones)
+            const resumes = {{ resumes | safe }};
+
+            // Populate resume list
+            resumes.forEach((resume, index) => {
+                const li = document.createElement('li');
+                li.textContent = resume.filename; // Filename to display
+                li.style.cursor = 'pointer';
+                li.onclick = () => {
+                    // Display preview of the selected resume
+                    previewText.textContent = `Previewing: ${resume.filename}`;
+                };
+                resumeList.appendChild(li);
+            });
+        });
+    </script>
 </body>
 </html>
